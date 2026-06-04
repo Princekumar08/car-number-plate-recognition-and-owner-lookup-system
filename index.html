@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Plate Lookup Pro – Car Number Plate Recognition</title>
+<meta name="description" content="Instantly look up Indian car number plate details. OCR scan, manual search, parking alert tools, records management."/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link rel="stylesheet" href="web.css"/>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="bg-glow g1"></div><div class="bg-glow g2"></div><div class="bg-glow g3"></div>
+
+<!-- Login Screen -->
+<div id="login-overlay" class="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="logo-icon-wrap"><i class="fa-solid fa-car-side"></i></div>
+      <h1>Plate Lookup Pro</h1>
+      <p>Intelligent Number Plate Recognition</p>
+    </div>
+    <div class="login-tabs">
+      <button class="ltab active" id="tab-user"><i class="fa-solid fa-user"></i> User</button>
+      <button class="ltab" id="tab-staff"><i class="fa-solid fa-user-shield"></i> Staff</button>
+      <button class="ltab" id="tab-admin"><i class="fa-solid fa-shield-halved"></i> Admin</button>
+    </div>
+    <div id="form-user" class="lform">
+      <div class="linput-wrap"><i class="fa-solid fa-user-circle"></i><input type="text" id="login-username" placeholder="Enter Your Name" class="linput" autocomplete="off"/></div>
+      <button id="btn-user-login" class="btn primary fw"><i class="fa-solid fa-arrow-right-to-bracket"></i> Enter App</button>
+      <p class="lhint">Search-only access</p>
+    </div>
+    <div id="form-staff" class="lform" style="display:none">
+      <div class="linput-wrap"><i class="fa-solid fa-id-card"></i><input type="text" id="login-staff-id" placeholder="Staff / Guard ID" class="linput" autocomplete="off"/></div>
+      <div class="linput-wrap"><i class="fa-solid fa-lock"></i><input type="password" id="login-staff-pass" placeholder="Password" class="linput"/></div>
+      <button id="btn-staff-login" class="btn primary fw"><i class="fa-solid fa-shield-halved"></i> Login as Staff</button>
+      <p class="lhint">Parking System Access</p>
+    </div>
+    <div id="form-admin" class="lform" style="display:none">
+      <div class="linput-wrap"><i class="fa-solid fa-lock"></i><input type="password" id="login-password" placeholder="Admin Password" class="linput"/></div>
+      <button id="btn-admin-login" class="btn primary fw"><i class="fa-solid fa-crown"></i> Login as Admin</button>
+      <p class="lhint">Full access – Add / Edit / Delete</p>
+    </div>
+    <div id="login-message" class="lmsg"></div>
+  </div>
+</div>
+
+<!-- App Shell -->
+<div class="app-shell" id="app-shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-brand">
+      <div class="sb-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+      <div><div class="sb-name">Lookup Pro</div><div class="sb-ver">v2.0 Web</div></div>
+    </div>
+    <nav class="sb-nav" id="sb-nav">
+      <button class="nav-item active" data-mode="image"><i class="fa-solid fa-camera"></i><span>Camera / OCR</span></button>
+      <button class="nav-item" data-mode="number"><i class="fa-solid fa-keyboard"></i><span>Manual Search</span></button>
+      <button class="nav-item" data-mode="add" id="nav-add" style="display:none"><i class="fa-solid fa-plus-circle"></i><span>Add Record</span></button>
+      <button class="nav-item" data-mode="records" id="nav-records" style="display:none"><i class="fa-solid fa-table-list"></i><span>Records Portal</span></button>
+    </nav>
+    <div class="sb-footer">
+      <button id="parking-portal-btn" class="parking-btn" style="display:none" onclick="window.open('parking.html','_blank')"><i class="fa-solid fa-triangle-exclamation"></i> Parking Guard</button>
+      <div class="user-chip" id="user-chip" style="display:none">
+        <i class="fa-solid fa-user-circle"></i>
+        <div><div id="user-name-lbl">User</div><div id="user-role-lbl" class="role-lbl">User</div></div>
+      </div>
+      <button id="logout-btn" class="btn logout-btn fw" style="display:none"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+    </div>
+  </aside>
+
+  <!-- Content -->
+  <div class="main-content">
+
+    <!-- Mobile top bar -->
+    <header class="mobile-bar">
+      <button id="hamburger-btn" class="ham-btn"><i class="fa-solid fa-bars"></i></button>
+      <span class="mob-brand"><i class="fa-solid fa-satellite-dish"></i> Lookup Pro</span>
+      <button id="mob-logout-btn" style="display:none;background:0;border:0;color:#f87171;font-size:1rem;cursor:pointer;padding:4px 8px"><i class="fa-solid fa-right-from-bracket"></i></button>
+    </header>
+
+    <!-- Mobile bottom tabs -->
+    <div class="mob-tabs" id="mob-tabs">
+      <button class="mob-tab active" data-mode="image"><i class="fa-solid fa-camera"></i><span>Scan</span></button>
+      <button class="mob-tab" data-mode="number"><i class="fa-solid fa-keyboard"></i><span>Search</span></button>
+      <button class="mob-tab" data-mode="add" id="mob-add" style="display:none"><i class="fa-solid fa-plus"></i><span>Add</span></button>
+      <button class="mob-tab" data-mode="records" id="mob-records" style="display:none"><i class="fa-solid fa-table-list"></i><span>Records</span></button>
+    </div>
+
+    <div class="panels-area">
+
+      <!-- Panel: OCR Scan -->
+      <section class="panel active" id="panel-image">
+        <div class="panel-hdr"><h2><i class="fa-solid fa-expand"></i> Scan Plate</h2><span class="pbadge">AI OCR</span></div>
+        <div class="upload-zone" id="upload-zone">
+          <div class="uzone-icon"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+          <p class="uzone-title">Drag & drop a plate image here</p>
+          <p class="uzone-sub">PNG, JPG, WEBP supported</p>
+          <div class="uzone-btns">
+            <label for="image-input" class="btn primary"><i class="fa-solid fa-folder-open"></i> Browse</label>
+            <label for="camera-input" class="btn btn-camera"><i class="fa-solid fa-camera"></i> Camera</label>
+          </div>
+          <input type="file" id="image-input" accept="image/*" hidden/>
+          <input type="file" id="camera-input" accept="image/*" capture="environment" hidden/>
+        </div>
+        <div id="preview-area" style="display:none">
+          <div class="preview-box"><img id="img-preview" src="" alt="Preview"/></div>
+          <div class="file-meta"><i class="fa-solid fa-image"></i> <span id="file-name">image</span>
+            <button id="retake-btn" class="icon-btn" title="Clear"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <button id="ocr-button" class="btn primary fw"><i class="fa-solid fa-wand-magic-sparkles"></i> Extract Plate Number</button>
+        </div>
+        <div id="ocr-progress-container" style="display:none" class="prog-wrap">
+          <div class="prog-bg"><div id="ocr-progress-fill" class="prog-fill"></div></div>
+          <div id="ocr-progress-text" class="prog-txt">Processing...</div>
+        </div>
+        <div id="ocr-status" class="status-txt"></div>
+        <div id="extracted-number" class="extracted-num"></div>
+        <div id="ocr-fallback-container" style="display:none" class="fallback-box">
+          <p class="fb-label"><i class="fa-solid fa-pen"></i> Not accurate? Correct it:</p>
+          <div class="inline-search">
+            <input type="text" id="ocr-fallback-input" placeholder="Edit plate..." class="form-input"/>
+            <button id="ocr-fallback-btn" class="btn primary"><i class="fa-solid fa-search"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Manual Search -->
+      <section class="panel" id="panel-number" style="display:none">
+        <div class="panel-hdr"><h2><i class="fa-solid fa-magnifying-glass"></i> Search Record</h2><span class="pbadge">Quick Lookup</span></div>
+        <div class="plate-search-wrap">
+          <div class="plate-input-box">
+            <div class="plate-prefix"><i class="fa-solid fa-car"></i></div>
+            <input type="text" id="manual-input" class="plate-inp" placeholder="MH12AB1234" autocomplete="off" maxlength="12"/>
+            <button id="manual-search-button" class="plate-go-btn"><i class="fa-solid fa-arrow-right"></i></button>
+          </div>
+          <div id="validation-warning" style="display:none" class="val-warn"><i class="fa-solid fa-triangle-exclamation"></i> Format: MH12AB1234</div>
+        </div>
+        <div id="search-history-container" style="display:none" class="hist-wrap">
+          <div class="hist-label"><i class="fa-solid fa-clock-rotate-left"></i> Recent Searches</div>
+          <div class="hist-chips" id="history-chips"></div>
+        </div>
+        <div class="samples-section">
+          <div class="samples-label"><i class="fa-solid fa-bolt"></i> Sample Plates to Try</div>
+          <div class="samples-grid" id="samples-grid"></div>
+        </div>
+      </section>
+
+      <!-- Panel: Add Record -->
+      <section class="panel" id="panel-add" style="display:none">
+        <div class="panel-hdr"><h2><i class="fa-solid fa-database"></i> Add New Record</h2><span class="pbadge admin-badge">Admin</span></div>
+        <div class="add-form">
+          <div class="form-row2">
+            <div class="ff"><label class="fl"><i class="fa-solid fa-car-side"></i> Plate *</label><input type="text" id="add-number" placeholder="MH12AB1234" class="form-input"/></div>
+            <div class="ff"><label class="fl"><i class="fa-solid fa-user"></i> Owner *</label><input type="text" id="add-owner" placeholder="Full Name" class="form-input"/></div>
+          </div>
+          <div class="form-row2">
+            <div class="ff"><label class="fl"><i class="fa-solid fa-car"></i> Model</label><input type="text" id="add-model" placeholder="Hyundai Creta" class="form-input"/></div>
+            <div class="ff"><label class="fl"><i class="fa-solid fa-palette"></i> Color</label><input type="text" id="add-color" placeholder="White" class="form-input"/></div>
+          </div>
+          <div class="form-row2">
+            <div class="ff"><label class="fl"><i class="fa-solid fa-phone"></i> Phone</label><input type="tel" id="add-phone" placeholder="+91 XXXXXXXXXX" class="form-input"/></div>
+            <div class="ff"><label class="fl" style="color:#a78bfa"><i class="fa-solid fa-phone-flip"></i> Alt Number</label><input type="tel" id="add-alt-phone" placeholder="Optional" class="form-input" style="border-color:rgba(167,139,250,.3)"/></div>
+          </div>
+          <div class="zone-block">
+            <label class="fl"><i class="fa-solid fa-location-dot"></i> Parking Zone</label>
+            <div class="zone-btns" id="zone-btn-group">
+              <button type="button" class="zone-btn zone-faculty" data-zone="Faculty" onclick="selectZone('Faculty')"><i class="fa-solid fa-chalkboard-user"></i> Faculty</button>
+              <button type="button" class="zone-btn zone-student" data-zone="Student" onclick="selectZone('Student')"><i class="fa-solid fa-graduation-cap"></i> Student</button>
+              <button type="button" class="zone-btn zone-visitor" data-zone="Visitor" onclick="selectZone('Visitor')"><i class="fa-solid fa-person-walking"></i> Visitor</button>
+              <button type="button" class="zone-btn zone-staff" data-zone="Staff" onclick="selectZone('Staff')"><i class="fa-solid fa-user-tie"></i> Staff</button>
+            </div>
+            <input type="text" id="add-zone-custom" placeholder="Or type custom zone..." class="form-input" style="margin-top:10px"/>
+            <input type="hidden" id="add-zone" value=""/>
+          </div>
+          <button id="add-btn" class="btn primary fw"><i class="fa-solid fa-cloud-arrow-up"></i> Save Record</button>
+          <div id="add-status" class="status-txt"></div>
+          <div class="or-divider"><span><i class="fa-solid fa-file-csv"></i> OR IMPORT DATASET</span></div>
+          <div class="import-zone">
+            <i class="fa-solid fa-file-excel import-ico"></i>
+            <h4>Upload Excel / CSV</h4>
+            <p>Columns: Car Number, Owner Name, Car Model, Color, Phone, Alt Number, Parking Zone</p>
+            <label for="excel-file-input" class="btn secondary" style="cursor:pointer"><i class="fa-solid fa-folder-open"></i> Select File</label>
+            <input type="file" id="excel-file-input" accept=".xlsx,.xls,.csv" style="display:none"/>
+            <div id="excel-file-info" style="display:none;color:#a78bfa;font-size:.82rem;margin-top:8px"></div>
+            <div id="excel-import-status" style="font-size:.85rem;margin-top:8px;font-weight:bold"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Panel: Records -->
+      <section class="panel" id="panel-records" style="display:none">
+        <div class="panel-hdr"><h2><i class="fa-solid fa-table-list"></i> Records Portal</h2></div>
+        <div class="rec-stats" id="records-stats">
+          <div class="stat-chip" id="stat-total"><i class="fa-solid fa-car"></i> -- Total</div>
+          <div class="stat-chip stat-custom" id="stat-custom"><i class="fa-solid fa-user-pen"></i> -- Custom</div>
+          <div class="stat-chip stat-static" id="stat-static"><i class="fa-solid fa-database"></i> -- Built-in</div>
+        </div>
+        <div class="rec-toolbar">
+          <div class="rec-search-wrap"><i class="fa-solid fa-magnifying-glass"></i><input type="text" id="records-search" placeholder="Search plate, name, model..." class="form-input rec-inp" autocomplete="off"/></div>
+          <div class="rec-filters">
+            <button class="rfbtn active" data-filter="all">All</button>
+            <button class="rfbtn" data-filter="custom">Custom</button>
+            <button class="rfbtn" data-filter="builtin">Built-in</button>
+          </div>
+        </div>
+        <div class="rec-list" id="records-list"><div class="rec-loading"><i class="fa-solid fa-spinner spinner"></i> Loading...</div></div>
+        <div class="rec-export-bar">
+          <button class="btn secondary" onclick="exportRecordsCSV()"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+          <button class="btn secondary" onclick="refreshRecords()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+      </section>
+
+    </div><!-- end panels-area -->
+
+    <!-- Result Card -->
+    <div class="result-area" id="result-area">
+      <div class="result-card" id="result-card">
+        <div class="result-hdr">
+          <h2><i class="fa-solid fa-clipboard-list"></i> Details</h2>
+        </div>
+        <div id="result">
+          <div class="empty-state">
+            <i class="fa-solid fa-magnifying-glass empty-icon"></i>
+            <p>No query yet.</p>
+            <p class="empty-sub">Scan or type a plate number to begin.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end main-content -->
+</div><!-- end app-shell -->
+
+<!-- Modal -->
+<div id="modal-overlay" class="modal-overlay" style="display:none">
+  <div class="modal-box" id="modal-box">
+    <button class="modal-close-btn" id="modal-close"><i class="fa-solid fa-xmark"></i></button>
+    <h2 id="modal-title"></h2>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<script src="local-data.js"></script>
+<script src="parking-data.js"></script>
+<script src="web.js"></script>
+</body>
+</html>

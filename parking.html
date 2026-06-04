@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: gap: content: blob:; worker-src * 'self' blob:; img-src * 'self' data: blob:; connect-src * 'self' data: blob:; style-src * 'self' 'unsafe-inline'; font-src * 'self' data:;">
+    <title>Parking Violation System — Galgotias University</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="parking.css" />
+    <script src="js/app-storage.js"></script>
+    <!-- jsPDF for PDF generation (bundled locally for offline APK) -->
+    <script src="js/jspdf.umd.min.js"></script>
+</head>
+
+<body>
+
+    <!-- Toast Notification -->
+    <div id="pv-toast" class="pv-toast"></div>
+
+    <div class="pv-container">
+
+        <!-- ===== HEADER ===== -->
+        <header class="pv-header">
+            <a href="index.html" class="pv-back-btn" id="pv-back-btn">
+                <i class="fa-solid fa-arrow-left"></i>
+            </a>
+            <div class="pv-header-text">
+                <h1><i class="fa-solid fa-shield-halved"></i> Parking System</h1>
+                <p>Galgotias University — GPS Zone Detection</p>
+            </div>
+            <div class="guard-session-badge" id="guard-session-badge" style="display:none;">
+                <div class="guard-session-avatar"><i class="fa-solid fa-user-shield"></i></div>
+                <div>
+                    <div class="guard-session-name" id="guard-session-name">Guard</div>
+                    <div class="guard-session-id" id="guard-session-id">--</div>
+                </div>
+                <button class="guard-logout-btn" id="guard-logout-btn" title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- ===== TABS ===== -->
+        <nav class="pv-tabs" id="pv-tabs">
+            <button class="pv-tab active" data-tab="check" id="tab-check">
+                <i class="fa-solid fa-magnifying-glass"></i> Check
+            </button>
+            <button class="pv-tab" data-tab="guard" id="tab-guard">
+                <i class="fa-solid fa-camera"></i> Guard
+            </button>
+            <button class="pv-tab" data-tab="history" id="tab-history">
+                <i class="fa-solid fa-clock-rotate-left"></i> History
+            </button>
+            <button class="pv-tab" data-tab="admin" id="tab-admin">
+                <i class="fa-solid fa-lock"></i> Admin
+            </button>
+        </nav>
+
+        <!-- =====================================================
+             TAB 1: CHECK PANEL
+             ===================================================== -->
+        <section id="panel-check" class="pv-panel active">
+
+            <!-- Zone Legend -->
+            <div class="pv-card zone-legend-card">
+                <div class="pv-card-title"><i class="fa-solid fa-map"></i> Campus Zone Legend</div>
+                <div class="zone-legend-grid" id="zone-legend-grid">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- GPS Zone Detection -->
+            <div class="pv-card">
+                <div class="pv-card-title"><i class="fa-solid fa-location-crosshairs"></i> Current Location Zone</div>
+                <div id="pv-zone-banner" class="pv-zone-banner unknown">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <span id="pv-zone-text">Tap to detect your GPS zone</span>
+                </div>
+                <button class="pv-btn pv-btn-secondary pv-btn-full" id="pv-gps-btn" style="margin-top:12px; font-size:0.85rem;">
+                    <i class="fa-solid fa-satellite-dish"></i> Detect My Location
+                </button>
+            </div>
+
+            <!-- Vehicle Number Input -->
+            <div class="pv-card">
+                <div class="pv-card-title"><i class="fa-solid fa-car"></i> Vehicle Number</div>
+                <div class="pv-input-group">
+                    <input type="text" id="pv-plate-input" class="pv-input"
+                        placeholder="e.g. UP14AA0001"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        maxlength="12" />
+                    <button class="pv-btn pv-btn-secondary" id="pv-scan-btn" title="Scan with camera">
+                        <i class="fa-solid fa-camera"></i>
+                    </button>
+                </div>
+
+                <!-- Entry Time -->
+                <div style="margin-top:12px;">
+                    <div class="pv-form-label">Entry Time (leave blank = now)</div>
+                    <input type="datetime-local" id="pv-entry-time" class="pv-input"
+                        style="font-size:0.88rem; letter-spacing:0; font-weight:500;" />
+                </div>
+
+                <button class="pv-btn pv-btn-primary pv-btn-full" id="pv-check-btn" style="margin-top:14px;">
+                    <i class="fa-solid fa-shield-halved"></i> Check Violation
+                </button>
+            </div>
+
+            <!-- Result Card (hidden until checked) -->
+            <div id="pv-result-wrapper" style="display:none;">
+
+                <!-- Status Card -->
+                <div id="pv-result-card" class="pv-result-card">
+                    <div class="pv-result-header">
+                        <div class="pv-status-icon-wrap" id="pv-status-icon-wrap">
+                            <i id="pv-status-icon" class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <div class="pv-status-label" id="pv-status-label">--</div>
+                            <div class="pv-status-sub" id="pv-status-sub">--</div>
+                        </div>
+                    </div>
+
+                    <div class="pv-result-body">
+
+                        <!-- Vehicle Info Grid -->
+                        <div class="pv-info-grid" id="pv-info-grid">
+                            <div class="pv-info-item">
+                                <div class="pv-info-label">Plate</div>
+                                <div class="pv-info-value" id="pv-res-plate">--</div>
+                            </div>
+                            <div class="pv-info-item">
+                                <div class="pv-info-label">Owner</div>
+                                <div class="pv-info-value" id="pv-res-owner">--</div>
+                            </div>
+                            <div class="pv-info-item">
+                                <div class="pv-info-label">User Type</div>
+                                <div class="pv-info-value" id="pv-res-usertype">--</div>
+                            </div>
+                            <div class="pv-info-item">
+                                <div class="pv-info-label">Vehicle</div>
+                                <div class="pv-info-value" id="pv-res-vehicletype">--</div>
+                            </div>
+                            <div class="pv-info-item">
+                                <div class="pv-info-label">Assigned Zone</div>
+                                <div class="pv-info-value" id="pv-res-zone">--</div>
+                            </div>
+                            <div class="pv-info-item">
+                                <div class="pv-info-label">GPS Zone</div>
+                                <div class="pv-info-value" id="pv-res-gpszone">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Violations List -->
+                        <div id="pv-violations-section" style="display:none;">
+                            <div class="pv-card-title" style="margin-bottom:8px;">
+                                <i class="fa-solid fa-circle-exclamation"></i> Violation Reasons
+                            </div>
+                            <div class="pv-violations-list" id="pv-violations-list"></div>
+                        </div>
+
+                        <!-- Fine Banner -->
+                        <div id="pv-fine-banner" class="pv-fine-banner" style="display:none;">
+                            <div class="pv-fine-label"><i class="fa-solid fa-indian-rupee-sign"></i> Fine Amount</div>
+                            <div class="pv-fine-amount" id="pv-fine-amount">₹0</div>
+                        </div>
+
+                        <!-- Remaining Time (valid) -->
+                        <div id="pv-remaining-banner" class="pv-remaining-banner" style="display:none;">
+                            <div class="pv-remaining-label"><i class="fa-solid fa-hourglass-half"></i> Time Remaining</div>
+                            <div class="pv-remaining-time" id="pv-remaining-time">0 min</div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pv-result-actions">
+                        <button class="pv-btn pv-btn-whatsapp" id="pv-whatsapp-btn" style="flex:1; display:none;">
+                            <i class="fa-brands fa-whatsapp"></i> WhatsApp Alert
+                        </button>
+                        <button class="pv-btn pv-btn-secondary" id="pv-share-btn" style="flex:1;">
+                            <i class="fa-solid fa-share-nodes"></i> Share
+                        </button>
+                        <button class="pv-btn pv-btn-secondary" id="pv-clear-btn" style="flex:1;">
+                            <i class="fa-solid fa-rotate-left"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- =====================================================
+             TAB 2: GUARD MODE
+             ===================================================== -->
+        <section id="panel-guard" class="pv-panel">
+
+            <!-- Guard Header Banner -->
+            <div class="guard-header-banner">
+                <div class="guard-badge">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div>
+                    <div class="guard-title">Guard Mode</div>
+                    <div class="guard-subtitle">Capture & Report Parking Violations</div>
+                </div>
+            </div>
+
+            <!-- Step 1: GPS Location -->
+            <div class="pv-card">
+                <div class="pv-card-title"><i class="fa-solid fa-location-crosshairs"></i> Step 1 — Get Location</div>
+                <div id="guard-gps-banner" class="pv-zone-banner unknown" style="margin-bottom:12px;">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                    <span id="guard-gps-text">Location not detected yet</span>
+                </div>
+                <button class="pv-btn pv-btn-secondary pv-btn-full" id="guard-gps-btn">
+                    <i class="fa-solid fa-satellite-dish"></i> Get GPS Location
+                </button>
+                <div id="guard-coords-strip" class="guard-coords-strip" style="display:none;">
+                    <span><i class="fa-solid fa-crosshairs"></i> <span id="guard-lat">--</span>, <span id="guard-lng">--</span></span>
+                    <span><i class="fa-regular fa-clock"></i> <span id="guard-ts"></span></span>
+                </div>
+            </div>
+
+            <!-- Step 2: Capture Photo -->
+            <div class="pv-card">
+                <div class="pv-card-title"><i class="fa-solid fa-camera"></i> Step 2 — Capture Vehicle Photo</div>
+                <button class="pv-btn pv-btn-primary pv-btn-full" id="guard-capture-btn">
+                    <i class="fa-solid fa-camera"></i> Capture Violation Photo
+                </button>
+                <div id="guard-preview-box" class="guard-preview-box" style="display:none;">
+                    <img id="guard-preview-img" src="" alt="Captured vehicle" />
+                    <div class="guard-photo-overlay">
+                        <div class="guard-photo-info" id="guard-photo-info-overlay"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Vehicle Plate -->
+            <div class="pv-card">
+                <div class="pv-card-title"><i class="fa-solid fa-car"></i> Step 3 — Vehicle Plate</div>
+                <div class="pv-input-group">
+                    <input type="text" id="guard-plate-input" class="pv-input"
+                        placeholder="e.g. UP14AA0001"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        maxlength="12" />
+                    <button class="pv-btn pv-btn-secondary" id="guard-scan-btn" title="Scan plate">
+                        <i class="fa-solid fa-camera"></i>
+                    </button>
+                </div>
+
+                <!-- Owner Info (populated after lookup) -->
+                <div id="guard-owner-strip" class="guard-owner-strip" style="display:none;">
+                    <div class="guard-owner-avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="guard-owner-info">
+                        <div class="guard-owner-name" id="guard-owner-name">--</div>
+                        <div class="guard-owner-meta">
+                            <span id="guard-owner-type-badge" class="user-type-badge">--</span>
+                            <span id="guard-vehicle-type-badge" class="vehicle-type-badge">--</span>
+                        </div>
+                        <div class="guard-owner-phone" id="guard-owner-phone">--</div>
+                    </div>
+                </div>
+                <button class="pv-btn pv-btn-secondary pv-btn-full" id="guard-lookup-btn" style="margin-top:10px;">
+                    <i class="fa-solid fa-magnifying-glass"></i> Lookup Owner
+                </button>
+            </div>
+
+            <!-- Step 4: Send Alert -->
+            <div class="pv-card">
+                <div class="pv-card-title"><i class="fa-brands fa-whatsapp"></i> Step 4 — Send Alert</div>
+                <div id="guard-alert-preview" class="guard-alert-preview" style="display:none;">
+                    <div class="guard-alert-msg" id="guard-alert-msg"></div>
+                </div>
+                <button class="pv-btn pv-btn-whatsapp pv-btn-full" id="guard-whatsapp-btn" style="margin-top:12px;">
+                    <i class="fa-brands fa-whatsapp"></i> Send WhatsApp Alert
+                </button>
+                <button class="pv-btn pv-btn-secondary pv-btn-full" id="guard-save-btn" style="margin-top:10px;">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Capture Record
+                </button>
+            </div>
+
+        </section>
+
+        <!-- =====================================================
+             TAB 3: HISTORY
+             ===================================================== -->
+        <section id="panel-history" class="pv-panel">
+            <!-- Sub-tabs -->
+            <div class="history-subtabs" id="history-subtabs">
+                <button class="history-subtab active" data-htab="violations">
+                    <i class="fa-solid fa-triangle-exclamation"></i> Violations
+                </button>
+                <button class="history-subtab" data-htab="captures">
+                    <i class="fa-solid fa-camera"></i> Guard Captures
+                </button>
+            </div>
+
+            <!-- Violations History -->
+            <div id="htab-violations" class="htab-panel active-htab">
+                <div class="pv-card" style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <div style="font-size:0.85rem; color:#94a3b8;">Violation check log</div>
+                    <div style="display:flex; gap:8px; flex-shrink:0;">
+                        <button class="pv-btn pv-btn-secondary" id="pv-download-pdf-btn" style="padding:8px 14px; font-size:0.78rem; background:rgba(99,102,241,0.15); border-color:rgba(99,102,241,0.4); color:#818cf8;">
+                            <i class="fa-solid fa-file-pdf"></i> Download PDF
+                        </button>
+                        <button class="pv-btn pv-btn-secondary" id="pv-clear-history-btn" style="padding:8px 14px; font-size:0.78rem;">
+                            <i class="fa-solid fa-trash"></i> Clear All
+                        </button>
+                    </div>
+                </div>
+                <div id="pv-history-list">
+                    <div class="pv-empty">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <p>No checks performed yet</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Guard Captures History -->
+            <div id="htab-captures" class="htab-panel">
+                <div class="pv-card" style="padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:0.85rem; color:#94a3b8;">Guard photo captures</div>
+                    <button class="pv-btn pv-btn-secondary" id="clear-captures-btn" style="padding:8px 14px; font-size:0.78rem;">
+                        <i class="fa-solid fa-trash"></i> Clear All
+                    </button>
+                </div>
+                <div id="captures-list">
+                    <div class="pv-empty">
+                        <i class="fa-solid fa-camera"></i>
+                        <p>No captures saved yet</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================
+             TAB 4: ADMIN PANEL
+             ===================================================== -->
+        <section id="panel-admin" class="pv-panel">
+
+            <!-- Admin Login Gate -->
+            <div id="pv-admin-gate" class="pv-card">
+                <div class="pv-card-title"><i class="fa-solid fa-lock"></i> Admin Access</div>
+                <div class="pv-input-group">
+                    <input type="password" id="pv-admin-pass" class="pv-input"
+                        placeholder="Enter admin password"
+                        style="letter-spacing:0; font-weight:500;" />
+                    <button class="pv-btn pv-btn-primary" id="pv-admin-login-btn">
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+                <p style="font-size:0.78rem; color:#475569; margin-top:10px;">
+                    Default password: <code style="color:#64748b;">admin123</code>
+                </p>
+            </div>
+
+            <!-- Admin Controls -->
+            <div id="pv-admin-content" style="display:none;">
+
+                <!-- Add/Update Record -->
+                <div class="pv-card">
+                    <div class="pv-card-title"><i class="fa-solid fa-plus-circle"></i> Add / Update Record</div>
+                    <div class="pv-admin-form" id="pv-admin-form">
+                        <div>
+                            <div class="pv-form-label">Vehicle Number *</div>
+                            <input type="text" id="adm-plate" class="pv-input" placeholder="e.g. UP14AA0001"
+                                autocapitalize="characters" style="font-size:0.95rem;" />
+                        </div>
+                        <div>
+                            <div class="pv-form-label">Owner Name *</div>
+                            <input type="text" id="adm-owner" class="pv-input" placeholder="Full name"
+                                style="font-size:0.95rem; letter-spacing:0; font-weight:500;" />
+                        </div>
+                        <div>
+                            <div class="pv-form-label">Phone Number (with country code, no +)</div>
+                            <input type="text" id="adm-phone" class="pv-input" placeholder="919876543210"
+                                style="font-size:0.95rem; letter-spacing:0; font-weight:500;" />
+                        </div>
+                        <div>
+                            <div class="pv-form-label" style="color:#a78bfa;"><i class="fa-solid fa-phone-flip"></i> Alternate Number (Optional)</div>
+                            <input type="text" id="adm-alt-phone" class="pv-input" placeholder="e.g. 919811223344"
+                                style="font-size:0.95rem; letter-spacing:0; font-weight:500; border-color:rgba(167,139,250,0.35);" />
+                        </div>
+                        <div class="pv-form-row">
+                            <div>
+                                <div class="pv-form-label">User Type</div>
+                                <select id="adm-usertype" class="pv-select">
+                                    <option value="FACULTY">FACULTY</option>
+                                    <option value="STUDENT" selected>STUDENT</option>
+                                    <option value="VISITOR">VISITOR</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="pv-form-label">Vehicle Type</div>
+                                <select id="adm-vehicletype" class="pv-select">
+                                    <option value="CAR" selected>CAR</option>
+                                    <option value="BIKE">BIKE</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pv-form-row">
+                            <div>
+                                <div class="pv-form-label">Assigned Zone</div>
+                                <select id="adm-zone" class="pv-select">
+                                    <option value="Z1">Zone 1 — Faculty Only</option>
+                                    <option value="Z2">Zone 2 — Faculty & Students</option>
+                                    <option value="Z3" selected>Zone 3 — Students & Visitors</option>
+                                    <option value="Z4">Zone 4 — Bike Only</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="pv-form-label">Payment Status</div>
+                                <select id="adm-payment" class="pv-select">
+                                    <option value="PAID">PAID</option>
+                                    <option value="UNPAID">UNPAID</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pv-form-row">
+                            <div>
+                                <div class="pv-form-label">Allowed Time (min)</div>
+                                <input type="number" id="adm-time" class="pv-input"
+                                    placeholder="60" min="0" max="1440"
+                                    style="font-size:0.95rem; letter-spacing:0; font-weight:500;" />
+                            </div>
+                            <div>
+                                <div class="pv-form-label">Fine Amount (₹)</div>
+                                <input type="number" id="adm-fine" class="pv-input"
+                                    placeholder="500" min="0"
+                                    style="font-size:0.95rem; letter-spacing:0; font-weight:500;" />
+                            </div>
+                        </div>
+                        <div>
+                            <div class="pv-form-label">Entry Time (optional)</div>
+                            <input type="datetime-local" id="adm-entry" class="pv-input"
+                                style="font-size:0.85rem; letter-spacing:0; font-weight:500;" />
+                        </div>
+                        <button class="pv-btn pv-btn-primary pv-btn-full" id="pv-admin-save-btn">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Record
+                        </button>
+                        <div id="pv-admin-status" style="font-size:0.82rem; color:#34d399; text-align:center;"></div>
+                    </div>
+                </div>
+
+                <!-- All Records -->
+                <div class="pv-card">
+                    <div class="pv-card-title" style="justify-content:space-between;">
+                        <span><i class="fa-solid fa-database"></i> All Records</span>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span id="pv-records-count" style="font-size:0.75rem; color:#64748b;"></span>
+                            <button id="pv-reset-db-btn" class="pv-btn pv-btn-secondary" style="padding:5px 10px;font-size:0.72rem;border-color:rgba(239,68,68,0.4);color:#f87171;" title="Restore built-in default 10 vehicles">
+                                <i class="fa-solid fa-arrow-rotate-left"></i> Reset Defaults
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Backup & Restore -->
+                    <div style="display:flex; gap:8px; margin-bottom:12px; padding:0 4px;">
+                        <button id="pv-export-btn" class="pv-btn pv-btn-secondary" style="flex:1; padding:8px; font-size:0.75rem;">
+                            <i class="fa-solid fa-download"></i> Export Backup
+                        </button>
+                        <button id="pv-import-btn" class="pv-btn pv-btn-secondary" style="flex:1; padding:8px; font-size:0.75rem;">
+                            <i class="fa-solid fa-upload"></i> Import Backup
+                        </button>
+                        <input type="file" id="pv-import-input" accept=".json" hidden />
+                    </div>
+
+                    <div class="pv-admin-records" id="pv-admin-records-list">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- User Accounts Management -->
+                <div class="pv-card">
+                    <div class="pv-card-title"><i class="fa-solid fa-users"></i> User Accounts (Guards / Students / Faculty)</div>
+                    <!-- Add/Edit User Form -->
+                    <div class="pv-admin-form" style="margin-bottom:16px;">
+                        <input type="hidden" id="gadm-editing-id" value="" />
+                        <div class="pv-form-row">
+                            <div>
+                                <div class="pv-form-label">User ID *</div>
+                                <input type="text" id="gadm-id" class="pv-input" placeholder="e.g. G005 / S101 / F201" autocapitalize="characters" style="font-size:0.9rem;letter-spacing:0;font-weight:600;" />
+                            </div>
+                            <div>
+                                <div class="pv-form-label">Role *</div>
+                                <select id="gadm-role" class="pv-select">
+                                    <option value="GUARD">GUARD</option>
+                                    <option value="STUDENT">STUDENT</option>
+                                    <option value="FACULTY">FACULTY</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pv-form-row">
+                            <div>
+                                <div class="pv-form-label">Full Name *</div>
+                                <input type="text" id="gadm-name" class="pv-input" placeholder="Full name" style="font-size:0.9rem;letter-spacing:0;font-weight:500;" />
+                            </div>
+                            <div>
+                                <div class="pv-form-label">Badge / Enroll No.</div>
+                                <input type="text" id="gadm-badge" class="pv-input" placeholder="e.g. SEC-05 / 2024CS001" style="font-size:0.85rem;letter-spacing:0;font-weight:500;" />
+                            </div>
+                        </div>
+                        <div>
+                            <div class="pv-form-label">Password *</div>
+                            <input type="text" id="gadm-pass" class="pv-input" placeholder="Set password" style="font-size:0.9rem;letter-spacing:0;font-weight:500;" />
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="pv-btn pv-btn-primary" style="flex:1;" id="gadm-save-btn"><i class="fa-solid fa-floppy-disk"></i> Save User</button>
+                            <button class="pv-btn pv-btn-secondary" id="gadm-cancel-btn" style="display:none;"><i class="fa-solid fa-xmark"></i> Cancel</button>
+                        </div>
+                        <div id="gadm-status" style="font-size:0.82rem;color:#34d399;text-align:center;"></div>
+                    </div>
+                    <!-- User List -->
+                    <div id="gadm-list"></div>
+                </div>
+
+                <!-- Login History -->
+                <div class="pv-card">
+                    <div class="pv-card-title" style="justify-content:space-between;">
+                        <span><i class="fa-solid fa-clock-rotate-left"></i> User Login History</span>
+                        <button class="pv-btn pv-btn-secondary" id="clear-login-history-btn" style="padding:6px 12px;font-size:0.75rem;"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                    <div id="gadm-login-history"></div>
+                </div>
+
+                <!-- Logout -->
+                <button class="pv-btn pv-btn-secondary pv-btn-full" id="pv-admin-logout-btn" style="font-size:0.85rem;">
+                    <i class="fa-solid fa-right-from-bracket"></i> Admin Logout
+                </button>
+            </div>
+        </section>
+
+    </div><!-- /.pv-container -->
+
+    <!-- Hidden camera inputs -->
+    <input type="file" id="pv-camera-input"    accept="image/*" capture="environment" hidden />
+    <input type="file" id="guard-camera-input" accept="image/*" capture="environment" hidden />
+
+    <!-- Quick Registration Modal -->
+    <div id="quick-reg-modal" class="pv-modal-overlay">
+        <div class="pv-modal-card">
+            <div class="pv-modal-header">
+                <h3><i class="fa-solid fa-car-medical"></i> Quick Registration</h3>
+                <button class="pv-modal-close" id="quick-reg-close">&times;</button>
+            </div>
+            <div class="pv-modal-body">
+                <p style="font-size: 0.8rem; color: #94a3b8; margin-bottom: 16px;">Registering vehicle: <b id="reg-plate-display" style="color: #f87171;"></b></p>
+                <div class="pv-admin-form">
+                    <div>
+                        <div class="pv-form-label">Owner Name *</div>
+                        <input type="text" id="reg-owner" class="pv-input" placeholder="Enter full name" />
+                    </div>
+                    <div>
+                        <div class="pv-form-label">Phone Number</div>
+                        <input type="text" id="reg-phone" class="pv-input" placeholder="919876543210" />
+                    </div>
+                    <div class="pv-form-row">
+                        <div>
+                            <div class="pv-form-label">User Type</div>
+                            <select id="reg-usertype" class="pv-select">
+                                <option value="STUDENT" selected>STUDENT</option>
+                                <option value="FACULTY">FACULTY</option>
+                                <option value="VISITOR">VISITOR</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="pv-form-label">Vehicle Type</div>
+                            <select id="reg-vehicletype" class="pv-select">
+                                <option value="CAR" selected>CAR</option>
+                                <option value="BIKE">BIKE</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="pv-btn pv-btn-primary pv-btn-full" id="reg-save-btn" style="margin-top: 10px;">
+                        <i class="fa-solid fa-floppy-disk"></i> Complete Registration
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="parking-data.js"></script>
+    <script src="parking.js"></script>
+    <script src="parking-guard.js"></script>
+</body>
+
+</html>
