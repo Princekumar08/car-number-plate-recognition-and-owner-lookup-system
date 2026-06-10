@@ -227,29 +227,34 @@ async function initParkingAlert(){
 
 // SEARCH
 async function searchAndDisplay(number){
-  if(!number){setResultNotFound('Please provide a car number.');return;}
-  setLoadingState();
-  try{
-    let found=null;
-    if(typeof findLocalCar==='function'){const l=findLocalCar(number);if(l&&l.ownerName&&l.ownerName!=='Unknown')found=l;}
-    if(!found || !found.state){
-    setResultNotFound(`No records found for "${number}".`);
+  if(!number){
+    setResultNotFound('Please provide a car number.');
     return;
-}
-    if(found){renderRecord(found);addToSearchHistory(normalizeNumber(found.number));}
-    else setResultNotFound(`No records found for "${number}".`,'fa-file-circle-xmark');
- catch(e){
-    setResultNotFound('Error searching database.');
-}
-}
-function doSearch(val){
-  if(!val)return;
-  const mi=document.getElementById('manual-input');
-  if(mi)mi.value=val;
-  setActiveMode('number');
-  searchAndDisplay(normalizeNumber(val));
-}
+  }
 
+  setLoadingState();
+
+  try{
+    let found = null;
+
+    if(typeof findLocalCar === 'function'){
+      const l = findLocalCar(number);
+      if(l && l.ownerName && l.ownerName !== 'Unknown')
+        found = l;
+    }
+
+    if(!found || !found.state){
+      setResultNotFound(`No records found for "${number}".`);
+      return;
+    }
+
+    renderRecord(found);
+    addToSearchHistory(normalizeNumber(found.number));
+
+  } catch(e){
+    setResultNotFound('Error searching database.');
+  }
+}
 // OCR
 let ocrImage=null;
 function resetOcrUI(){
