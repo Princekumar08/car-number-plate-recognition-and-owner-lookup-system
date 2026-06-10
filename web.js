@@ -142,7 +142,7 @@ window.handleDelete=function(number){
   }
 };
 window.shareRecord=function(num,owner){
-  if(navigator.share){navigator.share({title:'Car Details',text:`Car ${num} – Owner: ${owner}`}).catch(()=>{});}
+  if(navigator.share){navigator.share({title:'Car Details',text:`Car ${num} Â– Owner: ${owner}`}).catch(()=>{});}
   else{navigator.clipboard.writeText(`Plate: ${num}, Owner: ${owner}`);showToast('Copied to clipboard',true);}
 };
 window.callOwner=function(){
@@ -164,7 +164,7 @@ window.sendWhatsAppAlert=async function(){
       if(navigator.share&&navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({title:`Parking Alert - ${num}`,text:`Parking Violation: Vehicle ${num} is illegally parked.`,files:[f]});return;}
     }catch(e){}
   }
-  const msg=encodeURIComponent(`Parking Violation Notice\n\nDear ${owner},\nYour vehicle *${num}* is parked in a restricted zone.\nPlease move it immediately.\n\n– Parking Guard System`);
+  const msg=encodeURIComponent(`Parking Violation Notice\n\nDear ${owner},\nYour vehicle *${num}* is parked in a restricted zone.\nPlease move it immediately.\n\nÂ– Parking Guard System`);
   window.open(`https://wa.me/${phone}?text=${msg}`,'_blank');
 };
 window.playTTSAlert=function(){
@@ -232,14 +232,15 @@ async function searchAndDisplay(number){
   try{
     let found=null;
     if(typeof findLocalCar==='function'){const l=findLocalCar(number);if(l&&l.ownerName&&l.ownerName!=='Unknown')found=l;}
-    if(!found||!found.state)found=generateDeterministicCar(number);
+    if(!found || !found.state){
+    setResultNotFound(`No records found for "${number}".`);
+    return;
+}
     if(found){renderRecord(found);addToSearchHistory(normalizeNumber(found.number));}
     else setResultNotFound(`No records found for "${number}".`,'fa-file-circle-xmark');
-  }catch(e){
-    const d=generateDeterministicCar(number);
-    if(d){renderRecord(d);addToSearchHistory(d.number);}
-    else setResultNotFound('Error searching database.');
-  }
+ catch(e){
+    setResultNotFound('Error searching database.');
+}
 }
 function doSearch(val){
   if(!val)return;
@@ -391,7 +392,7 @@ document.getElementById('add-btn')?.addEventListener('click',async()=>{
     const di=cars.findIndex(c=>c.number.toUpperCase().replace(/[^A-Z0-9]/g,'')===num.replace(/[^A-Z0-9]/g,''));
     if(di>=0)cars[di]=car;else cars.push(car);
     localStorage.setItem('CUSTOM_CARS',JSON.stringify(cars));
-    if(st)st.innerHTML=`<span style="color:#34d399">Saved: ${num}${zone?' · '+zone+' Zone':''}</span>`;
+    if(st)st.innerHTML=`<span style="color:#34d399">Saved: ${num}${zone?' Â· '+zone+' Zone':''}</span>`;
     ['add-number','add-owner','add-model','add-color','add-phone','add-alt-phone'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     if(zoneH)zoneH.value='';if(zoneCu)zoneCu.value='';
     document.querySelectorAll('#zone-btn-group .zone-btn').forEach(b=>b.classList.remove('zone-btn-active'));
@@ -534,7 +535,7 @@ function renderRecordsList(recs){
     const zone=r.parkingZone?`<div class="rec-zone-chip">${getZoneIcon(r.parkingZone)}<span>${r.parkingZone} Zone</span></div>`:'';
     const alt=r.altPhone?`<div class="rec-field"><div class="rec-field-label" style="color:#a78bfa">Alt.</div><div class="rec-field-value" style="color:#a78bfa">${r.altPhone}</div></div>`:'';
     const del=cu?`<button class="rec-action-btn rec-delete-btn" onclick="deleteFromPortal('${r.number}')"><i class="fa-solid fa-trash"></i> Delete</button>`:'';
-    return`<div class="rec-item-card"><div class="rec-card-header"><span class="rec-plate-num">${r.number}</span>${badge}</div><div class="rec-card-body"><div class="rec-field"><div class="rec-field-label">Owner</div><div class="rec-field-value">${r.ownerName||'—'}</div></div><div class="rec-field"><div class="rec-field-label">Model</div><div class="rec-field-value">${r.carModel||'—'}</div></div><div class="rec-field"><div class="rec-field-label">Color</div><div class="rec-field-value">${r.color||'—'}</div></div><div class="rec-field"><div class="rec-field-label">Phone</div><div class="rec-field-value">${r.phone||'—'}</div></div>${alt}</div>${zone}<div class="rec-card-actions"><button class="rec-action-btn rec-edit-btn" onclick="openEditModal('${r.number}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button><button class="rec-action-btn rec-search-btn" onclick="doSearch('${r.number}')"><i class="fa-solid fa-magnifying-glass"></i> Search</button>${del}</div></div>`;
+    return`<div class="rec-item-card"><div class="rec-card-header"><span class="rec-plate-num">${r.number}</span>${badge}</div><div class="rec-card-body"><div class="rec-field"><div class="rec-field-label">Owner</div><div class="rec-field-value">${r.ownerName||'Â—'}</div></div><div class="rec-field"><div class="rec-field-label">Model</div><div class="rec-field-value">${r.carModel||'Â—'}</div></div><div class="rec-field"><div class="rec-field-label">Color</div><div class="rec-field-value">${r.color||'Â—'}</div></div><div class="rec-field"><div class="rec-field-label">Phone</div><div class="rec-field-value">${r.phone||'Â—'}</div></div>${alt}</div>${zone}<div class="rec-card-actions"><button class="rec-action-btn rec-edit-btn" onclick="openEditModal('${r.number}')"><i class="fa-solid fa-pen-to-square"></i> Edit</button><button class="rec-action-btn rec-search-btn" onclick="doSearch('${r.number}')"><i class="fa-solid fa-magnifying-glass"></i> Search</button>${del}</div></div>`;
   }).join('');
 }
 window.refreshRecords=function(){
